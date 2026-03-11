@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paletta — AIでLPを、一瞬で。</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Noto+Sans+JP:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #fdfbf8;
+  --bg2: #f7f4ef;
+  --surface: #eeeae3;
+  --border: rgba(0,0,0,0.07);
+  --border2: rgba(0,0,0,0.12);
+  --text: #1c1712;
+  --text2: #4a4540;
+  --muted: rgba(28,23,18,0.4);
+  --accent: #c4773a;
+  --accent-light: #f0dcc8;
+  --accent2: #7a5c9e;
+  --accent2-light: #ede0f8;
+  --glow: rgba(196,119,58,0.12);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Sans JP', sans-serif;
+  font-weight: 300;
+  min-height: 100vh;
+  cursor: default;
+}
+
+/* ── GRAIN ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.028'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── HEADER ── */
+header {
+  padding: 0 48px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  background: rgba(253,251,248,0.92);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logo {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.logo-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  color: var(--text);
+}
+.logo-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-bottom: 2px;
+}
+.logo-tag {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 300;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-left: 4px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.header-link {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.header-link:hover { color: var(--text); }
+
+/* ── MAIN LAYOUT ── */
+.app {
+  display: grid;
+  grid-template-columns: 400px 1fr;
+  height: calc(100vh - 64px);
+}
+
+/* ── LEFT PANEL ── */
+.left {
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* STEPS */
+.step-block {
+  padding: 28px 32px;
+  border-bottom: 1px solid var(--border);
+}
+.step-block:last-child { border-bottom: none; }
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.step-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  background: var(--accent-light);
+  padding: 3px 8px;
+  border-radius: 20px;
+}
+.step-title {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--text2);
+  font-weight: 400;
+  text-transform: uppercase;
+}
+
+/* CATEGORY TABS */
+.cat-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.cat-tab {
+  flex: 1;
+  padding: 8px 4px;
+  border: 1.5px solid var(--border2);
+  border-radius: 8px;
+  background: white;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+.cat-tab:hover { border-color: var(--accent); color: var(--text); }
+.cat-tab.active {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  color: var(--accent);
+  font-weight: 400;
+}
+
+/* STYLE GRID */
+.style-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.style-card {
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.22s;
+  background: white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.style-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(196,119,58,0.1);
+}
+.style-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.style-thumb {
+  height: 80px;
+  overflow: hidden;
+  position: relative;
+}
+.style-thumb iframe {
+  width: 400%;
+  height: 400%;
+  transform: scale(0.25);
+  transform-origin: top left;
+  border: none;
+  pointer-events: none;
+}
+.style-thumb-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.thumb-loading {
+  position: absolute;
+  inset: 0;
+  background: var(--bg2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mini-spin {
+  width: 14px; height: 14px;
+  border: 1.5px solid var(--border2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.style-info {
+  padding: 8px 10px;
+  background: white;
+}
+.style-name {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: var(--text2);
+}
+.style-card.selected .style-name { color: var(--accent); }
+
+/* COLOR SECTION */
+.color-section { display: none; }
+.color-section.show { display: block; }
+
+.color-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.color-card {
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.color-card:hover { border-color: var(--accent); }
+.color-card.selected { border-color: var(--accent); background: var(--accent-light); }
+
+.color-swatches { display: flex; gap: 3px; }
+.swatch { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.08); }
+.color-name { font-size: 11px; color: var(--text2); flex: 1; }
+.color-check { font-size: 12px; color: var(--accent); opacity: 0; }
+.color-card.selected .color-check { opacity: 1; }
+
+/* FORM */
+.form-row { display: flex; flex-direction: column; gap: 10px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field-label {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.input {
+  background: white;
+  border: 1.5px solid var(--border2);
+  border-radius: 8px;
+  padding: 11px 13px;
+  color: var(--text);
+  font-family: 'Noto Sans JP', sans-serif;
+  font-size: 13px;
+  font-weight: 300;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+.input:focus { border-color: var(--accent); }
+.input::placeholder { color: var(--muted); }
+
+/* CHIPS */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  background: white;
+  border: 1.5px solid var(--border2);
+  border-radius: 20px;
+  padding: 6px 13px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.18s;
+  font-family: 'Noto Sans JP', sans-serif;
+  font-weight: 300;
+}
+.chip:hover { border-color: var(--accent); color: var(--text); }
+.chip.selected {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-light);
+}
+
+/* GENERATE BTN */
+.generate-wrap {
+  padding: 24px 32px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky;
+  bottom: 0;
+}
+.btn-generate {
+  width: 100%;
+  padding: 15px;
+  background: var(--text);
+  border: none;
+  border-radius: 10px;
+  color: var(--bg);
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 17px;
+  font-weight: 400;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+  transition: all 0.22s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.btn-generate:hover:not(:disabled) {
+  background: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(196,119,58,0.25);
+}
+.btn-generate:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+.btn-generate .sparkle { font-size: 14px; }
+
+/* ── RIGHT PANEL ── */
+.right {
+  background: var(--bg2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* PLACEHOLDER */
+.placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+.placeholder-art {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.placeholder-bar {
+  width: 6px;
+  border-radius: 3px;
+  background: var(--surface);
+  animation: barPulse 1.8s ease-in-out infinite;
+}
+.placeholder-bar:nth-child(1) { height: 32px; animation-delay: 0s; }
+.placeholder-bar:nth-child(2) { height: 48px; animation-delay: 0.2s; }
+.placeholder-bar:nth-child(3) { height: 40px; animation-delay: 0.4s; }
+.placeholder-bar:nth-child(4) { height: 56px; animation-delay: 0.6s; }
+.placeholder-bar:nth-child(5) { height: 36px; animation-delay: 0.8s; }
+
+@keyframes barPulse {
+  0%,100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+
+.placeholder p {
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+/* RESULTS */
+.results { display: none; flex-direction: column; height: 100%; }
+.results.show { display: flex; }
+
+.results-bar {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: white;
+  flex-shrink: 0;
+}
+.results-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.results-badge {
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  letter-spacing: 0.1em;
+}
+.btn-redo {
+  font-size: 11px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Noto Sans JP', sans-serif;
+  letter-spacing: 0.08em;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+.btn-redo:hover { color: var(--accent); background: var(--accent-light); }
+
+/* TABS */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+  gap: 0;
+  background: white;
+  flex-shrink: 0;
+}
+.tab {
+  padding: 12px 16px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.18s;
+  background: none;
+  border-top: none; border-left: none; border-right: none;
+  font-family: 'DM Sans', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab .dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--surface);
+  transition: background 0.2s;
+}
+.tab.generating .dot { background: var(--accent2); animation: pulse 1s ease-in-out infinite; }
+.tab.done .dot { background: #7bc47b; }
+.tab.active .dot { background: var(--accent); }
+
+/* PANELS */
+.panels { flex: 1; overflow: hidden; min-height: 0; }
+.panel { display: none; height: 100%; flex-direction: column; }
+.panel.active { display: flex; }
+
+.panel-loading {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+.panel-spinner {
+  width: 32px; height: 32px;
+  border: 2px solid var(--surface);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+.panel-loading-text {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+iframe.lp-frame {
+  flex: 1;
+  border: none;
+  width: 100%;
+  background: white;
+  display: none;
+  min-height: 0;
+}
+iframe.lp-frame.show { display: block; }
+
+.panel-footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: white;
+  flex-shrink: 0;
+}
+.btn-action {
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all 0.18s;
+  font-family: 'DM Sans', sans-serif;
+}
+.btn-action.secondary {
+  background: var(--bg2);
+  border: 1.5px solid var(--border2);
+  color: var(--text2);
+}
+.btn-action.secondary:hover { border-color: var(--accent); color: var(--accent); }
+.btn-action.primary {
+  background: var(--text);
+  border: 1.5px solid transparent;
+  color: var(--bg);
+}
+.btn-action.primary:hover { background: var(--accent); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:1} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-text">Paletta</span>
+    <div class="logo-dot"></div>
+    <span class="logo-tag">LP Generator</span>
+  </div>
+  <div class="header-right">
+    <a href="#" class="header-link">使い方</a>
+    <a href="#" class="header-link">料金</a>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- ── LEFT ── -->
+  <div class="left">
+
+    <!-- STEP 1: STYLE -->
+    <div class="step-block">
+      <div class="step-header">
+        <span class="step-num">01</span>
+        <span class="step-title">スタイルを選ぶ</span>
+      </div>
+
+      <div class="cat-tabs">
+        <button class="cat-tab active" onclick="switchCat(this,'artistic')">Artistic</button>
+        <button class="cat-tab" onclick="switchCat(this,'friendly')">Friendly</button>
+        <button class="cat-tab" onclick="switchCat(this,'business')">Business</button>
+      </div>
+
+      <!-- Artistic -->
+      <div class="style-grid" id="cat-artistic">
+        <div class="style-card" onclick="selectStyle(this,'luxury_dark')" id="card_luxury_dark">
+          <div class="style-thumb" id="thumb_luxury_dark"><div class="thumb-loading"><div class="mini-spin"></div></div></div>
+          <div class="style-info"><div class="style-name">Luxury Dark</div></div>
+        </div>
+        <div class="style-card" onclick="selectStyle(this,'soft_pink')" id="card_soft_pink">
+          <div class="style-thumb" id="thumb_soft_pink"><div class="thumb-loading"><div class="mini-spin"></div></div></div>
+          <div class="style-info"><div class="style-name">Soft Pink</div></div>
+        </div>
+        <div class="style-card" onclick="selectStyle(this,'natural')" id="card_natural">
+          <div class="style-thumb" id="thumb_natural"><div class="thumb-loading"><div class="mini-spin"></div></div></div>
+          <div class="style-info"><div class="style-name">Natural</div></div>
+        </div>
+        <div class="style-card" onclick="selectStyle(this,'minimal')" id="card_minimal">
+          <div class="style-thumb" id="thumb_minimal"><div class="thumb-loading"><div class="mini-spin"></div></div></div>
+          <div class="style-info"><div class="style-name">Minimal</div></div>
+        </div>
+        <div class="style-card" onclick="selectStyle(this,'bold')" id="card_bold">
+          <div class="style-thumb" id="thumb_bold"><div class="thumb-loading"><div class="mini-spin"></div></div></div>
+          <div class="style-info"><div class="style-name">Bold</div></div>
+        </div>
+        <div class="style-card" onclick="selectStyle(this,'pastel')" id="card_pastel">
+          <div class="style-thumb" id="thumb_pastel"><div class="thumb-loading"><div class="mini-spin"></div></div></div>
+          <div class="style-info"><div class="style-name">Pastel</div></div>
+        </div>
+      </div>
+
+      <!-- Friendly -->
+      <div class="style-grid" id="cat-friendly" style="display:none">
+        <div class="style-card" onclick="selectStyle(this,'warm_pop')" id="card_warm_pop">
+          <div class="style-thumb" id="thumb_warm_pop"><div class="thumb-loading"><div class="mini-spin"></div></div></div>
+          <div class="style-info"><div class="style-name">Warm Pop</div></div>
+        </div>
+        <div class="style-card" onclick="selectStyle(this,'handmade')" id="card_handmade">
+          <div class="style-thumb" id="thumb_handmade"><div class="thumb-loading"><div class="mini-spin"></div></div></div>
+          <div class="style-info"><div class="style-name">Handmade</div></div>
+        </div>
+        <div class="style-card" onclick="selectStyle(this,'local')" id="card_local">
+          <div class="style-thumb" id="thumb_local"><div class="thumb-loading"><div class="mini-spin"></div></div></div>
+          <div class="style-info"><div class="style-name">Local</div></div>
+        </div>
+        <div class="style-card" onclick="selectStyle(this,'cheerful')" id="card_cheerful">
+          <div class="style-thumb" id="thumb_cheerful"><div class="thumb-loading"><div class="mini-spin"></div></div></div>
+          <div class="style-info"><div class="style-name">Cheerful</div></div>
+        </div>
+      </div>
+
+      <!-- Business -->
+      <div class="style-grid" id="cat-business" style="display:none">
+        <div class="style-card" onclick="selectStyle(this,'corporate')" id="card_corporate">
+          <div class="style-thumb" id="thumb_corporate"><div class="thumb-loading"><div class="mini-spin"></div></div></div>
+          <div class="style-info"><div class="style-name">Corporate</div></div>
+        </div>
+        <div class="style-card" onclick="selectStyle(this,'saas')" id="card_saas">
+          <div class="style-thumb" id="thumb_saas"><div class="thumb-loading"><div class="mini-spin"></div></div></div>
+          <div class="style-info"><div class="style-name">SaaS</div></div>
+        </div>
+        <div class="style-card" onclick="selectStyle(this,'consulting')" id="card_consulting">
+          <div class="style-thumb" id="thumb_consulting"><div class="thumb-loading"><div class="mini-spin"></div></div></div>
+          <div class="style-info"><div class="style-name">Consulting</div></div>
+        </div>
+        <div class="style-card" onclick="selectStyle(this,'medical_pro')" id="card_medical_pro">
+          <div class="style-thumb" id="thumb_medical_pro"><div class="thumb-loading"><div class="mini-spin"></div></div></div>
+          <div class="style-info"><div class="style-name">Medical Pro</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: COLOR -->
+    <div class="step-block color-section" id="colorSection">
+      <div class="step-header">
+        <span class="step-num">02</span>
+        <span class="step-title">カラーを選ぶ</span>
+      </div>
+      <div class="color-grid" id="colorGrid"></div>
+    </div>
+
+    <!-- STEP 3: INFO -->
+    <div class="step-block">
+      <div class="step-header">
+        <span class="step-num" id="infoNum">02</span>
+        <span class="step-title">基本情報</span>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label class="field-label">業種・サービスの種類</label>
+          <input class="input" id="industry" placeholder="例：美容クリニック、カフェ、ITコンサル" oninput="checkReady()" />
+        </div>
+        <div class="field">
+          <label class="field-label">店名・サービス名</label>
+          <input class="input" id="shopName" placeholder="例：LORE CLINIC" oninput="checkReady()" />
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 4: PURPOSE -->
+    <div class="step-block">
+      <div class="step-header">
+        <span class="step-num" id="purposeNum">03</span>
+        <span class="step-title">LPの目的</span>
+      </div>
+      <div class="chips">
+        <div class="chip" onclick="toggleChip(this,'新規顧客の集客')">新規顧客の集客</div>
+        <div class="chip" onclick="toggleChip(this,'求人・採用')">求人・採用</div>
+        <div class="chip" onclick="toggleChip(this,'新商品・新メニューの認知')">新商品の認知</div>
+        <div class="chip" onclick="toggleChip(this,'予約・問い合わせ促進')">予約・問い合わせ</div>
+        <div class="chip" onclick="toggleChip(this,'イベント・セミナー告知')">イベント告知</div>
+        <div class="chip" onclick="toggleChip(this,'ブランド認知')">ブランド認知</div>
+        <div class="chip" onclick="toggleChip(this,'資料請求・リード獲得')">資料請求</div>
+        <div class="chip" onclick="toggleChip(this,'商品・サービス販売')">商品販売</div>
+      </div>
+    </div>
+
+    <div class="generate-wrap">
+      <button class="btn-generate" id="generateBtn" onclick="generate()" disabled>
+        <span class="sparkle">✦</span>
+        4パターン生成する
+      </button>
+    </div>
+
+  </div>
+
+  <!-- ── RIGHT ── -->
+  <div class="right">
+
+    <div class="placeholder" id="placeholder">
+      <div class="placeholder-art">
+        <div class="placeholder-bar"></div>
+        <div class="placeholder-bar"></div>
+        <div class="placeholder-bar"></div>
+        <div class="placeholder-bar"></div>
+        <div class="placeholder-bar"></div>
+      </div>
+      <p>スタイルを選んでスタート</p>
+    </div>
+
+    <div class="results" id="results">
+      <div class="results-bar">
+        <div class="results-label">
+          Generated
+          <span class="results-badge">4 patterns</span>
+        </div>
+        <button class="btn-redo" onclick="resetAll()">← 最初から</button>
+      </div>
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab(0)" id="tab0">Pattern 1 <span class="dot"></span></button>
+        <button class="tab" onclick="switchTab(1)" id="tab1">Pattern 2 <span class="dot"></span></button>
+        <button class="tab" onclick="switchTab(2)" id="tab2">Pattern 3 <span class="dot"></span></button>
+        <button class="tab" onclick="switchTab(3)" id="tab3">Pattern 4 <span class="dot"></span></button>
+      </div>
+      <div class="panels">
+        <div class="panel active" id="panel0">
+          <div class="panel-loading"><div class="panel-spinner"></div><p class="panel-loading-text">Generating...</p></div>
+          <iframe class="lp-frame" id="frame0"></iframe>
+          <div class="panel-footer">
+            <button class="btn-action secondary" onclick="downloadLP(0)">ダウンロード</button>
+            <button class="btn-action primary" onclick="copyLP(0)">HTMLをコピー</button>
+          </div>
+        </div>
+        <div class="panel" id="panel1">
+          <div class="panel-loading"><div class="panel-spinner"></div><p class="panel-loading-text">Generating...</p></div>
+          <iframe class="lp-frame" id="frame1"></iframe>
+          <div class="panel-footer">
+            <button class="btn-action secondary" onclick="downloadLP(1)">ダウンロード</button>
+            <button class="btn-action primary" onclick="copyLP(1)">HTMLをコピー</button>
+          </div>
+        </div>
+        <div class="panel" id="panel2">
+          <div class="panel-loading"><div class="panel-spinner"></div><p class="panel-loading-text">Generating...</p></div>
+          <iframe class="lp-frame" id="frame2"></iframe>
+          <div class="panel-footer">
+            <button class="btn-action secondary" onclick="downloadLP(2)">ダウンロード</button>
+            <button class="btn-action primary" onclick="copyLP(2)">HTMLをコピー</button>
+          </div>
+        </div>
+        <div class="panel" id="panel3">
+          <div class="panel-loading"><div class="panel-spinner"></div><p class="panel-loading-text">Generating...</p></div>
+          <iframe class="lp-frame" id="frame3"></iframe>
+          <div class="panel-footer">
+            <button class="btn-action secondary" onclick="downloadLP(3)">ダウンロード</button>
+            <button class="btn-action primary" onclick="copyLP(3)">HTMLをコピー</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── DATA ──
+const colorOptions = {
+  luxury_dark: [
+    { id:'gold',    name:'ゴールド',      swatches:['#0a0a0f','#c9a84c','#f5e6b8'] },
+    { id:'purple',  name:'パープル',      swatches:['#0a0a14','#b8a0e8','#e0d0f8'] },
+    { id:'rose',    name:'ローズゴールド', swatches:['#0f0a0a','#e8a0a8','#f5d8dc'] },
+    { id:'silver',  name:'シルバー',      swatches:['#080810','#c0c8d8','#e8eaf0'] },
+  ],
+  soft_pink: [
+    { id:'rose',    name:'ローズピンク',  swatches:['#fff0f5','#f4a0bc','#e880a0'] },
+    { id:'peach',   name:'ピーチ',        swatches:['#fff5ee','#f4b89a','#e89070'] },
+    { id:'lavender',name:'ラベンダー',    swatches:['#f8f0ff','#c8a0e8','#a880c8'] },
+    { id:'coral',   name:'コーラル',      swatches:['#fff3f0','#f09080','#e07060'] },
+  ],
+  natural: [
+    { id:'sage',    name:'セージ',        swatches:['#f5f0e8','#8a9e7a','#6a7e5a'] },
+    { id:'terra',   name:'テラコッタ',    swatches:['#f5ede8','#c87a60','#a85a40'] },
+    { id:'sand',    name:'サンド',        swatches:['#f8f4ee','#c0a880','#a08060'] },
+    { id:'moss',    name:'モスグリーン',  swatches:['#f0f5ee','#7a9e6a','#5a7e4a'] },
+  ],
+  minimal: [
+    { id:'black',   name:'ブラック',      swatches:['#ffffff','#111111','#555555'] },
+    { id:'navy',    name:'ネイビー',       swatches:['#ffffff','#1a2a4a','#3a5a8a'] },
+    { id:'forest',  name:'フォレスト',    swatches:['#ffffff','#2a4a2a','#4a7a4a'] },
+    { id:'wine',    name:'ワイン',        swatches:['#faf5f5','#6a1a2a','#aa4a5a'] },
+  ],
+  bold: [
+    { id:'red',     name:'レッド',        swatches:['#111','#dd2222','#ff6644'] },
+    { id:'orange',  name:'オレンジ',      swatches:['#111','#ff7722','#ffaa44'] },
+    { id:'yellow',  name:'イエロー',      swatches:['#111','#ddcc00','#ffee44'] },
+    { id:'cyan',    name:'シアン',        swatches:['#111','#00aacc','#44ddff'] },
+  ],
+  pastel: [
+    { id:'sky',     name:'スカイ',        swatches:['#e8f4ff','#80b4e8','#a0c8f0'] },
+    { id:'mint',    name:'ミント',        swatches:['#e8fff4','#80e8b4','#a0f0c8'] },
+    { id:'lilac',   name:'ライラック',    swatches:['#f4e8ff','#b480e8','#c8a0f0'] },
+    { id:'rainbow', name:'レインボー',    swatches:['#f8f0ff','#b0a0e8','#e8a0d0'] },
+  ],
+  warm_pop: [
+    { id:'tomato',  name:'トマトレッド',  swatches:['#fff8f5','#e85a3a','#ff8a6a'] },
+    { id:'sunny',   name:'サニーイエロー',swatches:['#fffef0','#f0c830','#ffd850'] },
+    { id:'sky_pop', name:'スカイブルー',  swatches:['#f0f8ff','#4aa0e0','#70c0ff'] },
+    { id:'spring',  name:'スプリング',    swatches:['#f8fff0','#78c840','#a0e860'] },
+  ],
+  handmade: [
+    { id:'kraft',   name:'クラフト',      swatches:['#faf5e8','#c09050','#e0b870'] },
+    { id:'fabric',  name:'ファブリック',  swatches:['#f8f0f5','#c090a8','#e0b8cc'] },
+    { id:'forest_h',name:'フォレスト',    swatches:['#f0f8f0','#60a060','#88c888'] },
+    { id:'vintage', name:'ヴィンテージ',  swatches:['#faf5ee','#a08060','#c8a880'] },
+  ],
+  local: [
+    { id:'orange_l',name:'オレンジ',      swatches:['#fff8f0','#e87830','#ffa050'] },
+    { id:'green_l', name:'グリーン',      swatches:['#f5fff5','#508050','#70a870'] },
+    { id:'blue_l',  name:'ブルー',        swatches:['#f0f5ff','#3060a8','#5080d0'] },
+    { id:'brown_l', name:'ブラウン',      swatches:['#faf5ee','#805030','#a87050'] },
+  ],
+  cheerful: [
+    { id:'rainbow_c',name:'レインボー',   swatches:['#fff','#ff6b6b','#4ecdc4'] },
+    { id:'pop',     name:'ポップ',        swatches:['#fff','#ff88cc','#88ddff'] },
+    { id:'candy',   name:'キャンディ',    swatches:['#fff5ff','#ff66aa','#aa66ff'] },
+    { id:'neon',    name:'ネオン',        swatches:['#f8fff8','#00cc66','#ff3399'] },
+  ],
+  corporate: [
+    { id:'navy_c',  name:'ネイビー',      swatches:['#f8faff','#1a3a6a','#2a5a9a'] },
+    { id:'gray_c',  name:'グレー',        swatches:['#f8f8f8','#2a2a2a','#666666'] },
+    { id:'blue_c',  name:'ブルー',        swatches:['#f5f8ff','#2255aa','#4488dd'] },
+    { id:'dark_c',  name:'ダーク',        swatches:['#f8f5ff','#1a1a3a','#3a3a6a'] },
+  ],
+  saas: [
+    { id:'indigo',  name:'インディゴ',    swatches:['#f8f5ff','#4a30c0','#7a60e8'] },
+    { id:'teal',    name:'ティール',      swatches:['#f0fffe','#008080','#20a8a0'] },
+    { id:'violet',  name:'バイオレット',  swatches:['#fdf5ff','#8030c0','#b060e8'] },
+    { id:'slate',   name:'スレート',      swatches:['#f5f8fa','#3a5a7a','#5a7a9a'] },
+  ],
+  consulting: [
+    { id:'navy_co', name:'ネイビー',      swatches:['#f5f8ff','#1a2a5a','#2a4a8a'] },
+    { id:'gold_co', name:'ゴールド',      swatches:['#faf8f0','#8a6a20','#c0a040'] },
+    { id:'green_co',name:'ダークグリーン',swatches:['#f5faf5','#1a4a2a','#2a7a4a'] },
+    { id:'charcoal',name:'チャコール',    swatches:['#f8f8f8','#2a2a2a','#5a5a5a'] },
+  ],
+  medical_pro: [
+    { id:'med_blue',name:'メディカルブルー',swatches:['#f0f8ff','#1a60a8','#3a88d0'] },
+    { id:'med_green',name:'メディカルグリーン',swatches:['#f0fff8','#1a7850','#3aa870'] },
+    { id:'clean',   name:'クリーン',      swatches:['#ffffff','#2a3a5a','#4a6a8a'] },
+    { id:'trust',   name:'トラスト',      swatches:['#f8faff','#1a2a6a','#c09030'] },
+  ],
+};
+
+const styleDesc = {
+  luxury_dark:  'ラグジュアリーダーク（黒・ダークネイビー背景、高級感、セリフ体フォント、金属光沢アクセント）',
+  soft_pink:    'ソフトピンク・ガーリー（淡いピンク〜ラベンダー、かわいい、丸みのあるUI）',
+  natural:      'ナチュラル・オーガニック（ベージュ・クリーム、温かみ、テクスチャ感）',
+  minimal:      'ミニマル・クリーン（白背景、細い線、シンプルで洗練されたグリッドレイアウト）',
+  bold:         'ボールド・エディトリアル（黒背景、大きなタイポグラフィ、インパクト重視）',
+  pastel:       'パステルグラデーション（淡い水色〜薄紫〜薄ピンク、夢のような柔らかさ）',
+  warm_pop:     'ウォームポップ（明るくポップ、親しみやすい配色、元気な雰囲気）',
+  handmade:     'ハンドメイド・温もり（手作り感、クラフト紙風テクスチャ、アナログな温かさ）',
+  local:        'ローカル・地域密着（親しみやすい、地元感、安心・信頼の雰囲気）',
+  cheerful:     'チアフル・にぎやか（カラフル、楽しい、元気いっぱい、イベント感）',
+  corporate:    'コーポレート（信頼感、プロフェッショナル、清潔感のあるビジネスデザイン）',
+  saas:         'SaaS・テック（モダン、デジタル、グラデーション、スタートアップ感）',
+  consulting:   'コンサルティング（権威感、洗練、高単価サービス向けの格調あるデザイン）',
+  medical_pro:  'メディカルプロ（清潔感、信頼、医療・専門職向けの安心感のあるデザイン）',
+};
+
+const patternLayouts = [
+  '全画面ヒーロー（大きなキャッチコピー＋CTA）→ 強み・特徴3つ（アイコン付きカード）→ お客様の声 → CTA',
+  'ヒーロー左右2カラム（左テキスト・CTA、右ビジュアル）→ 特徴カード3つ → FAQ2〜3問 → CTA',
+  '縦スクロール型（大きな数字01/02/03でセクション区切り）→ 特徴 → 実績・数字 → お客様の声 → CTA',
+  '洗練ワンページ（アニメーション多め、印象的なヒーロー）→ サービス概要 → 強み → シンプルで美しいCTA',
+];
+
+const samplePrompts = {
+  luxury_dark:  '美容クリニック「BLANC CLINIC」のLP。黒・ダークネイビー背景、パープルグラデーションアクセント。Cormorant Garamond + Noto Sans JP。全画面ヒーロー→特徴3つ→CTA。',
+  soft_pink:    'まつ毛サロン「Lash & Co.」のLP。淡いピンク〜ラベンダー背景。Playfair Display + Noto Sans JP。ヒーロー→メニュー→口コミ→CTA。',
+  natural:      'オーガニックカフェ「Mori no Cha」のLP。クリーム・ベージュ背景、グリーンアクセント。Lora + Noto Sans JP。',
+  minimal:      'フリーランスデザイナーのポートフォリオLP。白背景、黒テキスト、細い線。DM Serif Display + Noto Sans JP。',
+  bold:         'パーソナルジム「IRON MIND」のLP。黒背景、赤アクセント。Bebas Neue + Noto Sans JP。大きなタイポグラフィ。',
+  pastel:       'オンラインヨガ「Sora Yoga」のLP。水色〜薄紫グラデーション。Quicksand + Noto Sans JP。',
+  warm_pop:     '地域のパン屋「Sunny Bakery」のLP。明るいオレンジ・イエロー。Fredoka One + Noto Sans JP。楽しくポップ。',
+  handmade:     'ハンドメイドアクセサリーショップ「tette」のLP。クラフト紙風ベージュ背景。手書き風フォント + Noto Sans JP。',
+  local:        '地域の整骨院「さくら整骨院」のLP。明るく親しみやすい、地域密着感。Noto Serif JP + Noto Sans JP。',
+  cheerful:     'こども向けプログラミング教室「Code Kids」のLP。カラフル・にぎやか。Rounded Mplus + Noto Sans JP。',
+  corporate:    '株式会社テクノの企業サイトLP。ネイビー背景。信頼感・プロフェッショナル。Noto Serif JP + Noto Sans JP。',
+  saas:         'タスク管理SaaS「TaskFlow」のLP。インディゴグラデーション。モダン・テック感。Plus Jakarta Sans + Noto Sans JP。',
+  consulting:   '経営コンサル「APEX Partners」のLP。ダークネイビー＋ゴールド。格調・権威感。Cormorant Garamond + Noto Sans JP。',
+  medical_pro:  '内科クリニック「みなと内科」のLP。清潔感・信頼感。メディカルブルー。Noto Serif JP + Noto Sans JP。',
+};
+
+// ── STATE ──
+let selectedStyle = null;
+let selectedColor = null;
+let selectedPurposes = [];
+let generatedHTMLs = [null,null,null,null];
+
+// ── CAT SWITCH ──
+function switchCat(el, cat) {
+  document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  ['artistic','friendly','business'].forEach(c => {
+    document.getElementById(`cat-${c}`).style.display = c === cat ? 'grid' : 'none';
+  });
+  // Deselect style when switching category
+  if (selectedStyle) {
+    const currentCard = document.getElementById(`card_${selectedStyle}`);
+    if (currentCard) {
+      const parentGrid = currentCard.closest('.style-grid');
+      if (parentGrid && parentGrid.id !== `cat-${cat}`) {
+        currentCard.classList.remove('selected');
+        selectedStyle = null;
+        document.getElementById('colorSection').classList.remove('show');
+        document.getElementById('infoNum').textContent = '02';
+        document.getElementById('purposeNum').textContent = '03';
+        checkReady();
+      }
+    }
+  }
+}
+
+// ── STYLE SELECT ──
+function selectStyle(el, id) {
+  document.querySelectorAll('.style-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedStyle = id;
+  selectedColor = null;
+
+  const colorSection = document.getElementById('colorSection');
+  colorSection.classList.add('show');
+  document.getElementById('infoNum').textContent = '03';
+  document.getElementById('purposeNum').textContent = '04';
+
+  const grid = document.getElementById('colorGrid');
+  grid.innerHTML = '';
+  (colorOptions[id] || []).forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'color-card' + (i === 0 ? ' selected' : '');
+    div.onclick = () => {
+      document.querySelectorAll('.color-card').forEach(c => c.classList.remove('selected'));
+      div.classList.add('selected');
+      selectedColor = p.id;
+      checkReady();
+    };
+    div.innerHTML = `
+      <div class="color-swatches">${p.swatches.map(s=>`<div class="swatch" style="background:${s}"></div>`).join('')}</div>
+      <span class="color-name">${p.name}</span>
+      <span class="color-check">✓</span>`;
+    grid.appendChild(div);
+    if (i === 0) selectedColor = p.id;
+  });
+
+  checkReady();
+  loadThumbIfNeeded(id);
+}
+
+// ── THUMB LAZY LOAD ──
+const loadedThumbs = new Set();
+function loadThumbIfNeeded(id) {
+  if (loadedThumbs.has(id)) return;
+  loadedThumbs.add(id);
+  const cached = sessionStorage.getItem(`thumb_${id}`);
+  if (cached) { renderThumb(id, cached); return; }
+  // Generate thumb in background
+  callAPI(`${samplePrompts[id]} CSSアニメーション含む。完全なHTMLのみ返すこと。`)
+    .then(html => {
+      sessionStorage.setItem(`thumb_${id}`, html);
+      renderThumb(id, html);
+    }).catch(() => {
+      const el = document.getElementById(`thumb_${id}`);
+      if (el) el.innerHTML = `<div class="style-thumb-placeholder" style="background:#f0ece4;"></div>`;
+    });
+}
+
+function renderThumb(id, html) {
+  const el = document.getElementById(`thumb_${id}`);
+  if (!el) return;
+  el.innerHTML = `<iframe srcdoc="${escQ(html)}" style="width:400%;height:400%;transform:scale(0.25);transform-origin:top left;border:none;pointer-events:none;"></iframe>`;
+}
+
+function escQ(s) {
+  return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── CHIPS ──
+function toggleChip(el, val) {
+  el.classList.toggle('selected');
+  if (el.classList.contains('selected')) selectedPurposes.push(val);
+  else selectedPurposes = selectedPurposes.filter(v => v !== val);
+  checkReady();
+}
+
+function checkReady() {
+  const ok = selectedStyle && document.getElementById('industry').value.trim() && document.getElementById('shopName').value.trim() && selectedPurposes.length > 0;
+  document.getElementById('generateBtn').disabled = !ok;
+}
+
+// ── API ──
+async function callAPI(prompt) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  const data = await res.json();
+  return data.content[0].text.replace(/```html\n?/g,'').replace(/```\n?/g,'').trim();
+}
+
+// ── GENERATE ──
+async function generate() {
+  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('results').classList.add('show');
+  generatedHTMLs = [null,null,null,null];
+
+  for (let i = 0; i < 4; i++) {
+    const tab = document.getElementById(`tab${i}`);
+    tab.className = 'tab' + (i===0?' active':'') + ' generating';
+    document.getElementById(`frame${i}`).className = 'lp-frame';
+    document.getElementById(`frame${i}`).srcdoc = '';
+    document.querySelector(`#panel${i} .panel-loading`).style.display = 'flex';
+  }
+
+  const industry = document.getElementById('industry').value.trim();
+  const shopName = document.getElementById('shopName').value.trim();
+  const purposes = selectedPurposes.join('・');
+  const colorName = (colorOptions[selectedStyle]||[]).find(c=>c.id===selectedColor)?.name || '';
+
+  await Promise.all([0,1,2,3].map(i => generateOne(i, industry, shopName, purposes, colorName)));
+}
+
+async function generateOne(i, industry, shopName, purposes, colorName) {
+  const prompt = `以下の条件で完全なランディングページのHTMLを生成してください。
+
+【基本情報】
+- 業種: ${industry}
+- 名前: ${shopName}
+- 目的: ${purposes}
+
+【デザイン】
+- スタイル: ${styleDesc[selectedStyle]}
+- アクセントカラー: ${colorName}
+- レイアウト: ${patternLayouts[i]}
+
+【要件】
+- Google Fonts使用（スタイルに合った美しいフォント）
+- CSSアニメーション・トランジション含む
+- モバイルレスポンシブ
+- 業種に合った自然な日本語コピー（薬機法・景品表示法に配慮）
+- 完全なHTMLのみ返すこと`;
+
+  try {
+    const html = await callAPI(prompt);
+    generatedHTMLs[i] = html;
+    revealPanel(i, html);
+  } catch(e) {
+    generatedHTMLs[i] = `<!DOCTYPE html><html><body style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#999;background:#f8f8f8;"><p>生成エラーが発生しました</p></body></html>`;
+    revealPanel(i, generatedHTMLs[i]);
+  }
+}
+
+function revealPanel(i, html) {
+  document.querySelector(`#panel${i} .panel-loading`).style.display = 'none';
+  const f = document.getElementById(`frame${i}`);
+  f.srcdoc = html;
+  f.className = 'lp-frame show';
+  const tab = document.getElementById(`tab${i}`);
+  tab.classList.remove('generating');
+  tab.classList.add('done');
+}
+
+function switchTab(i) {
+  document.querySelectorAll('.tab').forEach((t,j) => {
+    t.classList.toggle('active', i===j);
+  });
+  document.querySelectorAll('.panel').forEach((p,j) => p.classList.toggle('active', i===j));
+}
+
+function downloadLP(i) {
+  if (!generatedHTMLs[i]) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([generatedHTMLs[i]], {type:'text/html'}));
+  a.download = `paletta-lp-pattern${i+1}.html`;
+  a.click();
+}
+
+function copyLP(i) {
+  if (!generatedHTMLs[i]) return;
+  navigator.clipboard.writeText(generatedHTMLs[i]).then(()=>alert(`Pattern ${i+1} をコピーしました！`));
+}
+
+function resetAll() {
+  document.getElementById('results').classList.remove('show');
+  document.getElementById('placeholder').style.display = 'flex';
+  document.querySelectorAll('.style-card').forEach(c=>c.classList.remove('selected'));
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('colorSection').classList.remove('show');
+  document.getElementById('industry').value = '';
+  document.getElementById('shopName').value = '';
+  document.getElementById('infoNum').textContent = '02';
+  document.getElementById('purposeNum').textContent = '03';
+  selectedStyle = selectedColor = null;
+  selectedPurposes = [];
+  generatedHTMLs = [null,null,null,null];
+  document.getElementById('generateBtn').disabled = true;
+}
+</script>
+</body>
+</html>

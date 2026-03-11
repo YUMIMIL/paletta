@@ -1,0 +1,189 @@
+/* HEADER (shared style) */
+.header {
+  padding: 0 48px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  background: rgba(253, 251, 248, 0.92);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  text-decoration: none;
+}
+.logoText {
+  font-family: "Cormorant Garamond", serif;
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  color: var(--text);
+}
+.logoDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-bottom: 2px;
+}
+.logoTag {
+  font-family: "DM Sans", sans-serif;
+  font-size: 10px;
+  font-weight: 300;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-left: 4px;
+}
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.headerLink {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.headerLink:hover {
+  color: var(--text);
+}
+
+/* MAIN */
+.main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 60px 32px 80px;
+}
+
+.hero {
+  text-align: center;
+  margin-bottom: 64px;
+}
+.title {
+  font-family: "Cormorant Garamond", serif;
+  font-size: 36px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+.subtitle {
+  font-size: 14px;
+  color: var(--text2);
+  letter-spacing: 0.06em;
+}
+
+/* STEPS */
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  margin-bottom: 64px;
+}
+.step {
+  display: flex;
+  gap: 28px;
+  align-items: flex-start;
+}
+.stepNumber {
+  font-family: "Cormorant Garamond", serif;
+  font-size: 32px;
+  font-weight: 300;
+  color: var(--accent);
+  line-height: 1;
+  min-width: 48px;
+  padding-top: 4px;
+}
+.stepContent {
+  flex: 1;
+}
+.stepTitle {
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--text);
+  margin-bottom: 10px;
+  letter-spacing: 0.04em;
+}
+.stepDesc {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.8;
+  margin-bottom: 14px;
+}
+.stepTip {
+  background: var(--accent-light);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.7;
+}
+.tipLabel {
+  font-family: "DM Sans", sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  color: var(--accent);
+  margin-right: 8px;
+}
+
+/* FAQ */
+.faq {
+  margin-bottom: 64px;
+}
+.faqTitle {
+  font-family: "Cormorant Garamond", serif;
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: var(--text);
+  margin-bottom: 32px;
+  text-align: center;
+}
+.faqItem {
+  border-bottom: 1px solid var(--border);
+  padding: 20px 0;
+}
+.faqQ {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.faqA {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.8;
+}
+
+/* CTA */
+.cta {
+  text-align: center;
+}
+.ctaBtn {
+  display: inline-block;
+  padding: 16px 40px;
+  background: var(--text);
+  color: var(--bg);
+  font-family: "Cormorant Garamond", serif;
+  font-size: 17px;
+  font-weight: 400;
+  letter-spacing: 0.15em;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: all 0.22s;
+}
+.ctaBtn:hover {
+  background: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(196, 119, 58, 0.25);
+}
