@@ -1,0 +1,23 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // design_learnings: read-only from client, writes only from server (Admin SDK bypasses rules)
+    match /design_learnings/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // generated_lps: read-only from client, writes only from server
+    match /generated_lps/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

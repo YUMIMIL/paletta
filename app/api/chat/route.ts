@@ -1,23 +1,25 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
+import { PALETTA_SYSTEM_PROMPT } from "@/lib/paletta-prompt";
 
 const client = new Anthropic();
 
 export async function POST(req: NextRequest) {
   try {
-    const { prompt } = await req.json();
+    const { messages } = await req.json();
 
-    if (!prompt || typeof prompt !== "string") {
-      return new Response(JSON.stringify({ error: "prompt is required" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+    if (!messages || !Array.isArray(messages)) {
+      return Response.json(
+        { error: "messages array is required" },
+        { status: 400 }
+      );
     }
 
     const stream = await client.messages.stream({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 4000,
-      messages: [{ role: "user", content: prompt }],
+      max_tokens: 2000,
+      system: PALETTA_SYSTEM_PROMPT,
+      messages,
     });
 
     const encoder = new TextEncoder();
@@ -30,7 +32,9 @@ export async function POST(req: NextRequest) {
               event.delta.type === "text_delta"
             ) {
               controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify(event.delta.text)}\n\n`)
+                encoder.encode(
+                  `data: ${JSON.stringify(event.delta.text)}\n\n`
+                )
               );
             }
           }
@@ -55,10 +59,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Unknown error";
-    console.error("API error:", msg);
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    console.error("Chat API error:", msg);
+    return Response.json({ error: msg }, { status: 500 });
   }
 }

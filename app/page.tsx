@@ -3,6 +3,8 @@
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import styles from "./page.module.css";
+import { useAuth } from "@/lib/auth";
+import ChatPanel from "@/components/ChatPanel";
 
 // ── DATA ──
 const colorOptions: Record<
@@ -154,23 +156,61 @@ const purposeOptions = [
   "イベント・セミナー告知", "ブランド認知", "資料請求・リード獲得", "商品・サービス販売",
 ];
 
-// ── API helper ──
-async function callAPI(prompt: string): Promise<string> {
+// ── API helper (streaming) ──
+async function callAPIStream(
+  prompt: string,
+  onChunk: (text: string) => void
+): Promise<string> {
   const res = await fetch("/api/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "API error");
-  return data.html;
-}
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || "API error");
+  }
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error("No response body");
 
-function escQ(s: string) {
-  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  const decoder = new TextDecoder();
+  let full = "";
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const payload = line.slice(6);
+      if (payload === "[DONE]") break;
+      try {
+        const parsed = JSON.parse(payload);
+        if (typeof parsed === "string") {
+          full += parsed;
+          onChunk(full);
+        } else if (parsed.error) {
+          throw new Error(parsed.error);
+        }
+      } catch {
+        // skip parse errors
+      }
+    }
+  }
+
+  const html = full
+    .replace(/```html\n?/g, "")
+    .replace(/```\n?/g, "")
+    .trim();
+  return html;
 }
 
 export default function Home() {
+  const { user, isAdmin, signInWithGoogle, signOut } = useAuth();
+  const [chatOpen, setChatOpen] = useState(false);
   const [activeCat, setActiveCat] = useState("artistic");
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
@@ -182,23 +222,13 @@ export default function Home() {
   const [generating, setGenerating] = useState(false);
   const [tabStates, setTabStates] = useState<("idle" | "generating" | "done")[]>(["idle", "idle", "idle", "idle"]);
   const [showResults, setShowResults] = useState(false);
-  const [thumbHtmls, setThumbHtmls] = useState<Record<string, string>>({});
-
   const isReady = selectedStyle && industry.trim() && shopName.trim() && selectedPurposes.length > 0;
 
   const handleSelectStyle = useCallback((id: string) => {
     setSelectedStyle(id);
     const colors = colorOptions[id] || [];
     setSelectedColor(colors[0]?.id || null);
-
-    // Load thumbnail
-    if (!thumbHtmls[id]) {
-      const prompt = `${samplePrompts[id]} CSSアニメーション含む。完全なHTMLのみ返すこと。`;
-      callAPI(prompt)
-        .then((html) => setThumbHtmls((prev) => ({ ...prev, [id]: html })))
-        .catch(() => {});
-    }
-  }, [thumbHtmls]);
+  }, []);
 
   const handleSwitchCat = (catId: string) => {
     setActiveCat(catId);
@@ -220,13 +250,21 @@ export default function Home() {
     setShowResults(true);
     setGenerating(true);
     setGeneratedHTMLs([null, null, null, null]);
-    setTabStates(["generating", "generating", "generating", "generating"]);
+    setTabStates(["idle", "idle", "idle", "idle"]);
     setActiveTab(0);
 
     const purposes = selectedPurposes.join("・");
     const colorName = (colorOptions[selectedStyle] || []).find((c) => c.id === selectedColor)?.name || "";
 
-    const promises = [0, 1, 2, 3].map(async (i) => {
+    // Generate one at a time sequentially
+    for (let i = 0; i < 4; i++) {
+      setActiveTab(i);
+      setTabStates((prev) => {
+        const next = [...prev];
+        next[i] = "generating";
+        return next;
+      });
+
       const prompt = `以下の条件で完全なランディングページのHTMLを生成してください。
 
 【基本情報】
@@ -247,7 +285,18 @@ export default function Home() {
 - 完全なHTMLのみ返すこと`;
 
       try {
-        const html = await callAPI(prompt);
+        const html = await callAPIStream(prompt, (partial) => {
+          // Update preview with partial HTML during streaming
+          const cleaned = partial
+            .replace(/```html\n?/g, "")
+            .replace(/```\n?/g, "")
+            .trim();
+          setGeneratedHTMLs((prev) => {
+            const next = [...prev];
+            next[i] = cleaned;
+            return next;
+          });
+        });
         setGeneratedHTMLs((prev) => {
           const next = [...prev];
           next[i] = html;
@@ -271,9 +320,8 @@ export default function Home() {
           return next;
         });
       }
-    });
+    }
 
-    await Promise.all(promises);
     setGenerating(false);
   };
 
@@ -285,6 +333,14 @@ export default function Home() {
     a.download = `paletta-lp-pattern${i + 1}.html`;
     a.click();
     URL.revokeObjectURL(a.href);
+  };
+
+  const openLP = (i: number) => {
+    const html = generatedHTMLs[i];
+    if (!html) return;
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
   };
 
   const copyLP = (i: number) => {
@@ -319,6 +375,15 @@ export default function Home() {
         </div>
         <div className={styles.headerRight}>
           <Link href="/how-to" className={styles.headerLink}>使い方</Link>
+          {user ? (
+            <button className={styles.authBtn} onClick={signOut}>
+              ログアウト
+            </button>
+          ) : (
+            <button className={styles.authBtn} onClick={signInWithGoogle}>
+              ログイン
+            </button>
+          )}
         </div>
       </header>
 
@@ -357,21 +422,15 @@ export default function Home() {
                     onClick={() => handleSelectStyle(sid)}
                   >
                     <div className={styles.styleThumb}>
-                      {thumbHtmls[sid] ? (
-                        <iframe
-                          srcDoc={thumbHtmls[sid]}
-                          style={{
-                            width: "400%", height: "400%",
-                            transform: "scale(0.25)", transformOrigin: "top left",
-                            border: "none", pointerEvents: "none",
-                          }}
-                          title={styleNames[sid]}
-                        />
-                      ) : (
-                        <div className={styles.thumbLoading}>
-                          <div className={styles.miniSpin}></div>
-                        </div>
-                      )}
+                      <div className={styles.thumbPreview}>
+                        {(colorOptions[sid] || []).slice(0, 1).map((c) => (
+                          <div key={c.id} className={styles.thumbSwatches}>
+                            {c.swatches.map((s, j) => (
+                              <div key={j} style={{ background: s, flex: 1, height: "100%" }}></div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                     <div className={styles.styleInfo}>
                       <div className={styles.styleName}>{styleNames[sid]}</div>
@@ -526,10 +585,13 @@ export default function Home() {
                     )}
                     <div className={styles.panelFooter}>
                       <button className={`${styles.btnAction} ${styles.secondary}`} onClick={() => downloadLP(i)}>
-                        ダウンロード
+                        DL
                       </button>
-                      <button className={`${styles.btnAction} ${styles.primary}`} onClick={() => copyLP(i)}>
-                        HTMLをコピー
+                      <button className={`${styles.btnAction} ${styles.secondary}`} onClick={() => copyLP(i)}>
+                        コピー
+                      </button>
+                      <button className={`${styles.btnAction} ${styles.primary}`} onClick={() => openLP(i)} disabled={!generatedHTMLs[i]}>
+                        別タブで開く
                       </button>
                     </div>
                   </div>
@@ -539,6 +601,30 @@ export default function Home() {
           )}
         </div>
       </div>
+
+      {/* Floating chat button - admin only */}
+      {isAdmin && !chatOpen && (
+        <button
+          className={styles.fab}
+          onClick={() => setChatOpen(true)}
+          aria-label="Open chat"
+        >
+          P
+        </button>
+      )}
+
+      {/* Slide-out chat panel overlay */}
+      {isAdmin && chatOpen && (
+        <>
+          <div
+            className={styles.panelOverlay}
+            onClick={() => setChatOpen(false)}
+          />
+          <div className={styles.slidePanel}>
+            <ChatPanel onClose={() => setChatOpen(false)} />
+          </div>
+        </>
+      )}
     </>
   );
 }
